@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Plus, Radio } from "lucide-react";
 import { camerasApi, type CameraCreate } from "../api/cameras";
 import CameraCard from "../components/CameraCard";
 import { useCameraStore } from "../stores/cameraStore";
+import { useWebSocket } from "../hooks/useWebSocket";
 
 export default function Cameras() {
   const queryClient = useQueryClient();
@@ -11,6 +12,17 @@ export default function Cameras() {
   const { data: cameras = [] } = useQuery({ queryKey: ["cameras"], queryFn: camerasApi.list });
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<CameraCreate>({ name: "", rtsp_url: "" });
+
+  const onWsMessage = useCallback(
+    (msg: { type: string }) => {
+      if (msg.type === "camera_status") {
+        queryClient.invalidateQueries({ queryKey: ["cameras"] });
+      }
+    },
+    [queryClient],
+  );
+
+  const { connected } = useWebSocket(onWsMessage);
 
   const createMutation = useMutation({
     mutationFn: camerasApi.create,
@@ -21,6 +33,11 @@ export default function Cameras() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: camerasApi.delete,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cameras"] }),
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createMutation.mutate(form);
@@ -29,7 +46,15 @@ export default function Cameras() {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1e293b" }}>Cameras</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#1e293b" }}>Cameras</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.75rem" }}>
+            <Radio size={12} color={connected ? "#22c55e" : "#ef4444"} />
+            <span style={{ color: connected ? "#22c55e" : "#ef4444" }}>
+              {connected ? "Live" : "..."}
+            </span>
+          </div>
+        </div>
         <button
           onClick={() => setShowForm(!showForm)}
           style={{
@@ -83,7 +108,13 @@ export default function Cameras() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
         {cameras.map((cam) => (
-          <CameraCard key={cam.id} camera={cam} onSelect={setSelectedCamera} selected={selectedCameraId === cam.id} />
+          <CameraCard
+            key={cam.id}
+            camera={cam}
+            onSelect={setSelectedCamera}
+            onDelete={(id) => deleteMutation.mutate(id)}
+            selected={selectedCameraId === cam.id}
+          />
         ))}
         {cameras.length === 0 && (
           <p style={{ color: "#94a3b8", gridColumn: "1 / -1", textAlign: "center", padding: "3rem" }}>

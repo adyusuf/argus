@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -19,6 +20,7 @@ class EventResponse(BaseModel):
     details: dict | None
     frame_path: str | None
     ai_provider: str
+    created_at: datetime
 
     model_config = {"from_attributes": True}
 

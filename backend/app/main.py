@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import cameras, events, health
+from app.api import cameras, events, health, internal, ws
 from app.core.config import settings
 from app.core.database import engine, Base
 
@@ -24,7 +24,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:5174"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,3 +33,5 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api")
 app.include_router(cameras.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
+app.include_router(internal.router, prefix="/api")
+app.include_router(ws.router)

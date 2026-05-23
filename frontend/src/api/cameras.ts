@@ -9,6 +9,7 @@ export interface Camera {
   location: string | null;
   is_active: boolean;
   status: string;
+  last_seen: string | null;
 }
 
 export interface CameraCreate {
@@ -19,6 +20,13 @@ export interface CameraCreate {
   location?: string;
 }
 
+export interface CameraUpdate {
+  name?: string;
+  rtsp_url?: string;
+  location?: string;
+  is_active?: boolean;
+}
+
 export interface Event {
   id: string;
   camera_id: string;
@@ -27,13 +35,21 @@ export interface Event {
   details: Record<string, unknown> | null;
   frame_path: string | null;
   ai_provider: string;
+  created_at: string;
 }
 
 export const camerasApi = {
   list: () => api.get<Camera[]>("/cameras"),
   create: (data: CameraCreate) => api.post<Camera>("/cameras", data),
   get: (id: string) => api.get<Camera>(`/cameras/${id}`),
+  update: (id: string, data: CameraUpdate) =>
+    api.patch<Camera>(`/cameras/${id}`, data),
   delete: (id: string) => api.delete(`/cameras/${id}`),
+  check: (id: string) =>
+    api.post<{ camera_id: string; reachable: boolean; status: string }>(
+      `/cameras/${id}/check`,
+      {},
+    ),
 };
 
 export const eventsApi = {
