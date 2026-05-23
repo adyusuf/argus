@@ -30,8 +30,26 @@ services:
       - "8888:8888"
     environment:
       MTX_PROTOCOLS: tcp
-    volumes:
-      - ./rtsp/mediamtx.yml:/mediamtx.yml:ro
+
+  rtsp-feed-cam1:
+    image: linuxserver/ffmpeg:latest
+    entrypoint: >
+      ffmpeg -re -f lavfi -i testsrc=size=640x480:rate=15
+      -c:v libx264 -preset ultrafast -tune zerolatency
+      -f rtsp rtsp://rtsp-simulator:8554/cam1
+    depends_on:
+      - rtsp-simulator
+    restart: on-failure
+
+  rtsp-feed-cam2:
+    image: linuxserver/ffmpeg:latest
+    entrypoint: >
+      ffmpeg -re -f lavfi -i smptebars=size=640x480:rate=15
+      -c:v libx264 -preset ultrafast -tune zerolatency
+      -f rtsp rtsp://rtsp-simulator:8554/cam2
+    depends_on:
+      - rtsp-simulator
+    restart: on-failure
 
   backend:
     build: ./backend

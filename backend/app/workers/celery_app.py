@@ -8,6 +8,8 @@ celery_app = Celery(
     backend=settings.redis_url,
 )
 
+celery_app.autodiscover_tasks(["app.workers"])
+
 celery_app.conf.update(
     task_serializer="json",
     accept_content=["json"],

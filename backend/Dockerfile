@@ -1,7 +1,9 @@
 FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg libglib2.0-0 libsm6 libxext6 libxrender-dev \
+    ffmpeg pkg-config libavformat-dev libavcodec-dev libavdevice-dev \
+    libavutil-dev libswscale-dev libswresample-dev libavfilter-dev \
+    libglib2.0-0 libsm6 libxext6 libxrender-dev gcc libc6-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
