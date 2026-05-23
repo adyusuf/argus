@@ -1,0 +1,10 @@
+logLevel: info
+logDestinations: [stdout]
+
+paths:
+  cam1:
+    runOnInit: ffmpeg -re -f lavfi -i testsrc=size=640x480:rate=15 -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:$RTSP_PORT/$MTX_PATH
+    runOnInitRestart: yes
+  cam2:
+    runOnInit: ffmpeg -re -f lavfi -i smptebars=size=640x480:rate=15 -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:$RTSP_PORT/$MTX_PATH
+    runOnInitRestart: yes
