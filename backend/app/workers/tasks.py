@@ -2,7 +2,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 from app.core.config import settings
@@ -25,17 +25,17 @@ def _make_session() -> async_sessionmaker[AsyncSession]:
 
 
 async def _notify_event(event_data: dict):
-    """Best-effort WebSocket broadcast via HTTP to the backend."""
     import httpx
     try:
         async with httpx.AsyncClient() as client:
             await client.post(
                 "http://backend:8000/api/internal/broadcast",
                 json=event_data,
+                headers={"X-Internal-Token": settings.secret_key},
                 timeout=2,
             )
     except Exception:
-        pass
+        logger.warning("Failed to broadcast event", exc_info=True)
 
 
 @celery_app.task(bind=True, max_retries=2)
@@ -49,34 +49,37 @@ def process_camera_task(self, camera_id: str, rtsp_url: str):
         provider = get_ai_provider()
         session_factory = _make_session()
 
-        detections = await process_camera(camera_id, rtsp_url, provider)
-        stream_ok = detections is not None
+        result = await process_camera(camera_id, rtsp_url, provider)
+        stream_ok = result is not None
 
         async with session_factory() as session:
+            update_values = {
+                "status": "online" if stream_ok else "offline",
+                "last_seen": datetime.now(timezone.utc) if stream_ok else None,
+            }
+            if result and result.frame_path:
+                update_values["last_frame"] = result.frame_path
+
             await session.execute(
-                update(Camera)
-                .where(Camera.id == camera_id)
-                .values(
-                    status="online" if stream_ok else "offline",
-                    last_seen=datetime.now(timezone.utc) if stream_ok else None,
-                )
+                update(Camera).where(Camera.id == camera_id).values(**update_values)
             )
 
-            if detections:
-                for d in detections:
+            if result and result.detections:
+                for d in result.detections:
                     event = Event(
                         camera_id=camera_id,
                         event_type=d.label,
                         confidence=d.confidence,
                         details=d.bounding_box,
+                        frame_path=result.frame_path,
                         ai_provider=provider.provider_name(),
                     )
                     session.add(event)
 
             await session.commit()
 
-        if detections:
-            for d in detections:
+        if result and result.detections:
+            for d in result.detections:
                 await _notify_event({
                     "type": "new_event",
                     "data": {
@@ -84,6 +87,7 @@ def process_camera_task(self, camera_id: str, rtsp_url: str):
                         "event_type": d.label,
                         "confidence": d.confidence,
                         "ai_provider": provider.provider_name(),
+                        "frame_path": result.frame_path,
                     },
                 })
 
@@ -92,19 +96,34 @@ def process_camera_task(self, camera_id: str, rtsp_url: str):
             "data": {
                 "camera_id": camera_id,
                 "status": "online" if stream_ok else "offline",
+                "last_frame": result.frame_path if result else None,
             },
         })
 
-        return len(detections) if detections else 0
+        return len(result.detections) if result else 0
 
     return _run_async(_run())
 
 
 @celery_app.task
 def scan_all_cameras():
+    import redis as redis_lib
     from app.models.camera import Camera
 
+    r = redis_lib.from_url(settings.redis_url)
+    started_at = r.get("demo:started_at")
+    if not started_at:
+        return
+
+    elapsed = datetime.now(timezone.utc).timestamp() - float(started_at)
+    if elapsed > settings.demo_duration_seconds:
+        r.delete("demo:started_at")
+        logger.info("Demo expired after %d seconds, stopping", int(elapsed))
+        return
+
     async def _run():
+        from app.models.event import Event as EventModel
+
         session_factory = _make_session()
         async with session_factory() as session:
             result = await session.execute(
@@ -115,6 +134,26 @@ def scan_all_cameras():
         for cam in cameras:
             process_camera_task.delay(str(cam.id), cam.rtsp_url)
 
-        logger.info("Queued %d cameras for processing", len(cameras))
+        async with session_factory() as session:
+            count_result = await session.execute(
+                select(func.count(EventModel.id))
+            )
+            total = count_result.scalar() or 0
+            if total > 1000:
+                oldest = await session.execute(
+                    select(EventModel.id)
+                    .order_by(EventModel.created_at.desc())
+                    .offset(1000)
+                )
+                ids_to_delete = [row[0] for row in oldest.fetchall()]
+                if ids_to_delete:
+                    await session.execute(
+                        delete(EventModel).where(EventModel.id.in_(ids_to_delete))
+                    )
+                    await session.commit()
+                    logger.info("Pruned %d old events (kept latest 1000)", len(ids_to_delete))
+
+        logger.info("Queued %d cameras for processing (demo: %ds remaining)",
+                     len(cameras), int(settings.demo_duration_seconds - elapsed))
 
     _run_async(_run())

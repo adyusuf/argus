@@ -7,7 +7,9 @@ router = APIRouter()
 
 @router.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):
-    await ws_connect(ws)
+    accepted = await ws_connect(ws)
+    if not accepted:
+        return
     try:
         while True:
             await ws.receive_text()

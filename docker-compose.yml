@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-argus}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-argus_dev}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -17,7 +17,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -34,9 +34,12 @@ services:
   rtsp-feed-cam1:
     image: linuxserver/ffmpeg:latest
     entrypoint: >
-      ffmpeg -re -f lavfi -i testsrc=size=640x480:rate=15
+      ffmpeg -stream_loop -1 -re -i /videos/cam1_security.mp4
+      -vf scale=640:480
       -c:v libx264 -preset ultrafast -tune zerolatency
       -f rtsp rtsp://rtsp-simulator:8554/cam1
+    volumes:
+      - ./data/videos:/videos:ro
     depends_on:
       - rtsp-simulator
     restart: on-failure
@@ -44,16 +47,71 @@ services:
   rtsp-feed-cam2:
     image: linuxserver/ffmpeg:latest
     entrypoint: >
-      ffmpeg -re -f lavfi -i smptebars=size=640x480:rate=15
+      ffmpeg -stream_loop -1 -re -i /videos/cam2_intruder.mp4
+      -vf scale=640:480
       -c:v libx264 -preset ultrafast -tune zerolatency
       -f rtsp rtsp://rtsp-simulator:8554/cam2
+    volumes:
+      - ./data/videos:/videos:ro
+    depends_on:
+      - rtsp-simulator
+    restart: on-failure
+
+  rtsp-feed-cam3:
+    image: linuxserver/ffmpeg:latest
+    entrypoint: >
+      ffmpeg -stream_loop -1 -re -i /videos/12566041-uhd_3840_2160_30fps.mp4
+      -vf scale=640:480
+      -c:v libx264 -preset ultrafast -tune zerolatency
+      -f rtsp rtsp://rtsp-simulator:8554/cam3
+    volumes:
+      - ./data/videos:/videos:ro
+    depends_on:
+      - rtsp-simulator
+    restart: on-failure
+
+  rtsp-feed-cam4:
+    image: linuxserver/ffmpeg:latest
+    entrypoint: >
+      ffmpeg -stream_loop -1 -re -i /videos/5977704-hd_1366_586_30fps.mp4
+      -vf scale=640:480
+      -c:v libx264 -preset ultrafast -tune zerolatency
+      -f rtsp rtsp://rtsp-simulator:8554/cam4
+    volumes:
+      - ./data/videos:/videos:ro
+    depends_on:
+      - rtsp-simulator
+    restart: on-failure
+
+  rtsp-feed-cam5:
+    image: linuxserver/ffmpeg:latest
+    entrypoint: >
+      ffmpeg -stream_loop -1 -re -i /videos/3700915-hd_1920_1080_30fps.mp4
+      -vf scale=640:480
+      -c:v libx264 -preset ultrafast -tune zerolatency
+      -f rtsp rtsp://rtsp-simulator:8554/cam5
+    volumes:
+      - ./data/videos:/videos:ro
+    depends_on:
+      - rtsp-simulator
+    restart: on-failure
+
+  rtsp-feed-cam6:
+    image: linuxserver/ffmpeg:latest
+    entrypoint: >
+      ffmpeg -stream_loop -1 -re -i /videos/15498631_3840_2160_25fps.mp4
+      -vf scale=640:480
+      -c:v libx264 -preset ultrafast -tune zerolatency
+      -f rtsp rtsp://rtsp-simulator:8554/cam6
+    volumes:
+      - ./data/videos:/videos:ro
     depends_on:
       - rtsp-simulator
     restart: on-failure
 
   backend:
     build: ./backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
@@ -98,6 +156,8 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    environment:
+      VITE_API_URL: http://backend:8000
     depends_on:
       - backend
 

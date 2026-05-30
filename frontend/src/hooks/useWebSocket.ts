@@ -14,9 +14,7 @@ export function useWebSocket(onMessage: MessageHandler) {
 
   const connect = useCallback(() => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.hostname;
-    const port = "8000";
-    const ws = new WebSocket(`${protocol}//${host}:${port}/ws`);
+    const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
     ws.onopen = () => setConnected(true);
 

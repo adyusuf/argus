@@ -10,6 +10,7 @@ export interface Camera {
   is_active: boolean;
   status: string;
   last_seen: string | null;
+  last_frame: string | null;
 }
 
 export interface CameraCreate {
@@ -50,6 +51,18 @@ export const camerasApi = {
       `/cameras/${id}/check`,
       {},
     ),
+};
+
+export interface DemoStatus {
+  status: "running" | "stopped";
+  remaining_seconds: number;
+  elapsed_seconds?: number;
+}
+
+export const demoApi = {
+  start: () => api.post<DemoStatus>("/demo/start", {}),
+  stop: () => api.post<DemoStatus>("/demo/stop", {}),
+  status: () => api.get<DemoStatus>("/demo/status"),
 };
 
 export const eventsApi = {
