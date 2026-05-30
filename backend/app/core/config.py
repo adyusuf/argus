@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -22,6 +23,15 @@ class Settings(BaseSettings):
     demo_duration_seconds: int = 600
     max_concurrent_streams: int = 50
     max_ws_connections: int = 100
+
+    @field_validator("database_url")
+    @classmethod
+    def fix_db_scheme(cls, v: str) -> str:
+        if v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif v.startswith("postgresql://"):
+            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
 
     model_config = {"env_file": ".env"}
 

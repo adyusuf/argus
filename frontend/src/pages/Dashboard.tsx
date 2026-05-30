@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Camera, AlertTriangle, Activity, Wifi, Radio, Image, Play, Square } from "lucide-react";
 import { camerasApi, eventsApi, demoApi } from "../api/cameras";
