@@ -7,9 +7,7 @@ services:
     plan: free
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: argus-db
-          property: connectionString
+        sync: false
       - key: REDIS_URL
         sync: false
       - key: AI_PROVIDER
@@ -32,9 +30,7 @@ services:
     dockerCommand: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: argus-db
-          property: connectionString
+        sync: false
       - key: REDIS_URL
         sync: false
       - key: AI_PROVIDER
@@ -51,16 +47,8 @@ services:
     dockerCommand: celery -A app.workers.celery_app beat --loglevel=info
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: argus-db
-          property: connectionString
+        sync: false
       - key: REDIS_URL
         sync: false
       - key: SECRET_KEY
         sync: false
-
-databases:
-  - name: argus-db
-    plan: free
-    databaseName: argus
-    user: argus
