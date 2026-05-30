@@ -3,17 +3,23 @@ import json
 import logging
 from fastapi import WebSocket
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 _connections: set[WebSocket] = set()
 _lock = asyncio.Lock()
 
 
-async def ws_connect(ws: WebSocket):
-    await ws.accept()
+async def ws_connect(ws: WebSocket) -> bool:
     async with _lock:
+        if len(_connections) >= settings.max_ws_connections:
+            await ws.close(code=1013, reason="Too many connections")
+            return False
+        await ws.accept()
         _connections.add(ws)
     logger.info("WebSocket client connected (%d total)", len(_connections))
+    return True
 
 
 async def ws_disconnect(ws: WebSocket):

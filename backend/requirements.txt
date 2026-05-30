@@ -14,6 +14,7 @@ opencv-python-headless==4.11.0.86
 av==14.4.0
 boto3==1.38.23
 Pillow==11.2.1
+ultralytics==8.3.145
 python-dotenv==1.1.0
 pytest==8.3.5
 pytest-asyncio==0.26.0

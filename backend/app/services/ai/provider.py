@@ -25,5 +25,8 @@ def get_ai_provider() -> AIProvider:
     if settings.ai_provider == "rekognition":
         from app.services.ai.rekognition import RekognitionProvider
         return RekognitionProvider()
+    if settings.ai_provider == "yolo":
+        from app.services.ai.yolo import YoloProvider
+        return YoloProvider()
     from app.services.ai.mock import MockProvider
     return MockProvider()

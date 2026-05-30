@@ -1,7 +1,8 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Radio } from "lucide-react";
+import { AlertTriangle, Radio, Image } from "lucide-react";
 import { camerasApi, eventsApi } from "../api/cameras";
+import { frameUrl } from "../api/frames";
 import { useWebSocket } from "../hooks/useWebSocket";
 
 function timeAgo(iso: string): string {
@@ -15,8 +16,18 @@ export default function Events() {
   const queryClient = useQueryClient();
   const { data: events = [] } = useQuery({ queryKey: ["events"], queryFn: () => eventsApi.list({ limit: 200 }) });
   const { data: cameras = [] } = useQuery({ queryKey: ["cameras"], queryFn: camerasApi.list });
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<string>("");
+  const [filterCamera, setFilterCamera] = useState<string>("");
 
   const cameraMap = Object.fromEntries(cameras.map((c) => [c.id, c.name]));
+  const eventTypes = [...new Set(events.map((e) => e.event_type))].sort();
+
+  const filtered = events.filter((e) => {
+    if (filterType && e.event_type !== filterType) return false;
+    if (filterCamera && e.camera_id !== filterCamera) return false;
+    return true;
+  });
 
   const onWsMessage = useCallback(
     (msg: { type: string }) => {
@@ -41,44 +52,108 @@ export default function Events() {
         </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {events.map((e) => (
-          <div
-            key={e.id}
-            style={{
-              background: "#fff",
-              borderRadius: 10,
-              padding: "1rem 1.25rem",
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-            }}
+      <div style={{ display: "flex", gap: 10, marginBottom: "1rem" }}>
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          style={{ padding: "0.4rem 0.75rem", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: "0.8rem", background: "#fff", color: "#475569" }}
+        >
+          <option value="">All Types</option>
+          {eventTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select
+          value={filterCamera}
+          onChange={(e) => setFilterCamera(e.target.value)}
+          style={{ padding: "0.4rem 0.75rem", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: "0.8rem", background: "#fff", color: "#475569" }}
+        >
+          <option value="">All Cameras</option>
+          {cameras.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        {(filterType || filterCamera) && (
+          <button
+            onClick={() => { setFilterType(""); setFilterCamera(""); }}
+            style={{ padding: "0.4rem 0.75rem", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: "0.8rem", background: "#fff", color: "#ef4444", cursor: "pointer" }}
           >
-            <AlertTriangle
-              size={18}
-              color={e.event_type === "person" ? "#ef4444" : "#f59e0b"}
-            />
-            <div style={{ flex: 1 }}>
-              <span style={{ fontWeight: 600, color: "#1e293b" }}>{e.event_type}</span>
-              <span style={{ color: "#64748b", fontSize: "0.8rem", marginLeft: 8 }}>
-                {(e.confidence * 100).toFixed(0)}% — {e.ai_provider}
+            Clear
+          </button>
+        )}
+        <span style={{ fontSize: "0.8rem", color: "#94a3b8", alignSelf: "center", marginLeft: "auto" }}>
+          {filtered.length} / {events.length} events
+        </span>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {filtered.map((e) => {
+          const fUrl = frameUrl(e.frame_path);
+          return (
+            <div
+              key={e.id}
+              style={{
+                background: "#fff",
+                borderRadius: 10,
+                padding: "1rem 1.25rem",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+              }}
+            >
+              {fUrl ? (
+                <img
+                  src={fUrl}
+                  alt="frame"
+                  onClick={() => setLightbox(fUrl)}
+                  style={{
+                    width: 56, height: 40, objectFit: "cover", borderRadius: 6,
+                    cursor: "pointer", flexShrink: 0,
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: 56, height: 40, borderRadius: 6, background: "#f1f5f9",
+                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                }}>
+                  <Image size={16} color="#cbd5e1" />
+                </div>
+              )}
+              <AlertTriangle
+                size={18}
+                color={e.event_type === "person" ? "#ef4444" : "#f59e0b"}
+              />
+              <div style={{ flex: 1 }}>
+                <span style={{ fontWeight: 600, color: "#1e293b" }}>{e.event_type}</span>
+                <span style={{ color: "#64748b", fontSize: "0.8rem", marginLeft: 8 }}>
+                  {(e.confidence * 100).toFixed(0)}% — {e.ai_provider}
+                </span>
+              </div>
+              <span style={{ fontSize: "0.8rem", color: "#475569" }}>
+                {cameraMap[e.camera_id] ?? e.camera_id.slice(0, 8)}
+              </span>
+              <span style={{ fontSize: "0.75rem", color: "#94a3b8", minWidth: 60, textAlign: "right" }}>
+                {e.created_at ? timeAgo(e.created_at) : "—"}
               </span>
             </div>
-            <span style={{ fontSize: "0.8rem", color: "#475569" }}>
-              {cameraMap[e.camera_id] ?? e.camera_id.slice(0, 8)}
-            </span>
-            <span style={{ fontSize: "0.75rem", color: "#94a3b8", minWidth: 60, textAlign: "right" }}>
-              {e.created_at ? timeAgo(e.created_at) : "—"}
-            </span>
-          </div>
-        ))}
+          );
+        })}
         {events.length === 0 && (
           <p style={{ color: "#94a3b8", textAlign: "center", padding: "3rem" }}>
             No events detected yet.
           </p>
         )}
       </div>
+
+      {lightbox && (
+        <div
+          onClick={() => setLightbox(null)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 1000, cursor: "zoom-out",
+          }}
+        >
+          <img src={lightbox} alt="frame detail" style={{ maxWidth: "90vw", maxHeight: "90vh", borderRadius: 8 }} />
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,7 @@
+import { useNavigate } from "react-router-dom";
 import { Camera as CameraIcon, Wifi, WifiOff, Trash2 } from "lucide-react";
 import type { Camera } from "../api/cameras";
+import { frameUrl } from "../api/frames";
 
 interface Props {
   camera: Camera;
@@ -17,10 +19,11 @@ function timeAgo(iso: string): string {
 
 export default function CameraCard({ camera, onSelect, onDelete, selected }: Props) {
   const online = camera.status === "online";
+  const navigate = useNavigate();
 
   return (
     <div
-      onClick={() => onSelect(camera.id)}
+      onClick={() => { onSelect(camera.id); navigate(`/cameras/${camera.id}`); }}
       style={{
         background: "#fff",
         borderRadius: 12,
@@ -43,6 +46,16 @@ export default function CameraCard({ camera, onSelect, onDelete, selected }: Pro
       >
         <Trash2 size={14} color="#ef4444" />
       </button>
+
+      {camera.last_frame && (
+        <div style={{ marginBottom: 10, borderRadius: 8, overflow: "hidden", background: "#0f172a" }}>
+          <img
+            src={frameUrl(camera.last_frame)!}
+            alt={`${camera.name} last frame`}
+            style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }}
+          />
+        </div>
+      )}
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
         <CameraIcon size={20} color="#475569" />
