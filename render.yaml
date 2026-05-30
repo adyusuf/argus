@@ -11,10 +11,7 @@ services:
           name: argus-db
           property: connectionString
       - key: REDIS_URL
-        fromService:
-          type: redis
-          name: argus-redis
-          property: connectionString
+        sync: false
       - key: AI_PROVIDER
         value: yolo
       - key: SECRET_KEY
@@ -39,10 +36,7 @@ services:
           name: argus-db
           property: connectionString
       - key: REDIS_URL
-        fromService:
-          type: redis
-          name: argus-redis
-          property: connectionString
+        sync: false
       - key: AI_PROVIDER
         value: yolo
       - key: SECRET_KEY
@@ -61,18 +55,9 @@ services:
           name: argus-db
           property: connectionString
       - key: REDIS_URL
-        fromService:
-          type: redis
-          name: argus-redis
-          property: connectionString
+        sync: false
       - key: SECRET_KEY
         sync: false
-
-  - type: redis
-    name: argus-redis
-    plan: free
-    maxmemoryPolicy: allkeys-lru
-    ipAllowList: []
 
 databases:
   - name: argus-db

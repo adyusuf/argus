@@ -12,3 +12,4 @@ htmlcov/
 celerybeat-schedule
 backend/celerybeat-schedule
 backend/data/
+.vercel
