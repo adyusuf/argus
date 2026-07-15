@@ -14,7 +14,18 @@ opencv-python-headless==4.11.0.86
 av==14.4.0
 boto3==1.38.23
 Pillow==11.2.1
-ultralytics==8.3.145
 python-dotenv==1.1.0
-pytest==8.3.5
-pytest-asyncio==0.26.0
+
+# ultralytics runtime dependencies, installed explicitly so ultralytics itself
+# can be installed with --no-deps (its own opencv-python pull duplicates
+# opencv-python-headless above, and torch/torchvision are pinned to CPU wheels)
+numpy>=1.23.0
+matplotlib>=3.3.0
+pyyaml>=5.3.1
+requests>=2.23.0
+scipy>=1.4.1
+tqdm>=4.64.0
+psutil
+py-cpuinfo
+pandas>=1.1.4
+ultralytics-thop>=2.0.0

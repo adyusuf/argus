@@ -13,3 +13,6 @@ celerybeat-schedule
 backend/celerybeat-schedule
 backend/data/
 .vercel
+backend/*.pt
+data/videos/
+*.tsbuildinfo
